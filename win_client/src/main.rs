@@ -2,10 +2,17 @@ use std::str;
 use std::net::TcpStream;
 use std::io::{self, prelude::*, BufReader, Write};
 
+use sysinfo::{System, SystemExt};
+
 const MAX_STREAM_WRITES: usize = 60;
 
 fn main() -> io::Result<()> {
     println!("Win Client is running...");
+
+    let mut sys = System::new_all();
+    sys.refresh_all();
+    // WIP, extract sys info
+    println!("{:?}", sys);
 
     let mut stream = TcpStream::connect("127.0.0.1:7878")?;
 
