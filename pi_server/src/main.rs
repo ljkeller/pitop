@@ -5,9 +5,10 @@ use std::io::{Read, Write};
 use std::thread;
 
 const MAX_STREAM_READS: usize = 60;
+const MAX_BUFFER_SIZE: usize = 1024;
 
 fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
-    let mut buf = [0; 512];
+    let mut buf = [0; MAX_BUFFER_SIZE];
     for _ in 0..MAX_STREAM_READS {
         let bytes_read = stream.read(&mut buf)?;
 

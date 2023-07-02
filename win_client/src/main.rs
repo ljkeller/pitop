@@ -1,11 +1,13 @@
 use std::str;
 use std::net::TcpStream;
+use std::thread;
+use std::time;
 use std::io::{self, prelude::*, BufReader, Write};
 
 use sysinfo::{System, SystemExt, CpuExt, ComponentExt, DiskExt, NetworkExt};
 use serde::{Serialize, Deserialize};
 
-const MAX_STREAM_WRITES: usize = 60;
+const MAX_STREAM_WRITES: usize = 5;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct UtilBundle {
@@ -53,30 +55,33 @@ impl UtilBundle {
 
         bundle
     }
+
+    fn from_refreshed_sys(sys: &mut System) -> UtilBundle {
+        sys.refresh_all();
+        UtilBundle::from_sys(&sys)
+    }
 }
 
 fn main() -> io::Result<()> {
     println!("Win Client is running...");
 
     let mut sys = System::new_all();
-    sys.refresh_all();
-    let mut bundle = UtilBundle::from_sys(&sys);
-    println!("{}", serde_json::to_string_pretty(&bundle).unwrap());
-
     let mut stream = TcpStream::connect("127.0.0.1:7878")?;
     for _ in 0..MAX_STREAM_WRITES {
-        let mut input = String::new();
-        
-        println!("Enter a message:");
-        io::stdin().read_line(&mut input).expect("Failed to read");
+        let bundle = UtilBundle::from_refreshed_sys(&mut sys);
+        println!("{}", serde_json::to_string_pretty(&bundle).unwrap());
+        let json_bundle = serde_json::to_string(&bundle).unwrap();
 
-        stream.write(input.as_bytes()).expect("Failed to write");
+        // TODO: send a more network-friendly format over the wire
+        stream.write(json_bundle.as_bytes()).expect("Failed to write");
 
         let mut reader = BufReader::new(&stream);
         let mut buffer: Vec<u8> = Vec::new();
-        reader.read_until(b'\n', &mut buffer)?;
+        // TODO: send a proper termination character
+        reader.read_until(b'}', &mut buffer)?;
 
         println!("read from server: {} \n", str::from_utf8(&buffer).unwrap());
+        thread::sleep(time::Duration::from_secs(1));
     }
 
     Ok(())
