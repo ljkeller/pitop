@@ -9,7 +9,9 @@ use serde::{Serialize, Deserialize};
 
 use util_bundle::UtilBundle;
 
-const MAX_STREAM_WRITES: usize = 5;
+const MAX_STREAM_WRITES: usize = 6;
+const POLLING_PERIOD_S: u64 = 1;
+
 fn main() -> io::Result<()> {
     println!("Win Client is running...");
 
@@ -20,18 +22,22 @@ fn main() -> io::Result<()> {
         println!("{}", serde_json::to_string_pretty(&bundle).unwrap());
         let json_bundle = serde_json::to_string(&bundle).unwrap();
 
-        // TODO: send a more network-friendly format over the wire
-        stream.write_all(json_bundle.as_bytes()).expect("Failed to write");
-        stream.flush();
+        // Source https://www.wikiwand.com/en/Line_Delimited_JSON
+        send_newline_delimited_json(&mut stream, json_bundle);
 
         let mut reader = BufReader::new(&stream);
         let mut buffer: Vec<u8> = Vec::new();
-        // TODO: send a proper termination character
-        reader.read_until(b'}', &mut buffer)?;
+        let bytes_returned = reader.read_until( b'\n', &mut buffer)?;
 
-        println!("read from server: {} \n", str::from_utf8(&buffer).unwrap());
-        thread::sleep(time::Duration::from_secs(1));
+        if bytes_returned > 0 { println!("read from server: {} \n", str::from_utf8(&buffer).unwrap()); }
+        thread::sleep(time::Duration::from_secs(POLLING_PERIOD_S));
     }
 
     Ok(())
+}
+
+fn send_newline_delimited_json(stream: &mut TcpStream, json_bundle: String) -> io::Result<()> {
+    stream.write_all(json_bundle.as_bytes()).expect("Failed to write");
+    stream.write_all(b"\n").expect("Failed to write");
+    stream.flush()
 }
