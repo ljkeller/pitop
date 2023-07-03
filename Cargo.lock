@@ -242,12 +242,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15811caf2415fb889178633e7724bad2509101cde276048e013b9def5e51fa0"
 
 [[package]]
+name = "util_bundle"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sysinfo",
+]
+
+[[package]]
 name = "win_client"
 version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
  "sysinfo",
+ "util_bundle",
 ]
 
 [[package]]
