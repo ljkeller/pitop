@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 
 const MAX_STREAM_WRITES: usize = 5;
 
+// todo: make a bundle lib
 #[derive(Serialize, Deserialize, Debug)]
 struct UtilBundle {
     cpu_usage: Vec<f32>,
@@ -73,7 +74,8 @@ fn main() -> io::Result<()> {
         let json_bundle = serde_json::to_string(&bundle).unwrap();
 
         // TODO: send a more network-friendly format over the wire
-        stream.write(json_bundle.as_bytes()).expect("Failed to write");
+        stream.write_all(json_bundle.as_bytes()).expect("Failed to write");
+        stream.flush();
 
         let mut reader = BufReader::new(&stream);
         let mut buffer: Vec<u8> = Vec::new();

@@ -9,6 +9,8 @@ const MAX_BUFFER_SIZE: usize = 1024;
 
 fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
     let mut buf = [0; MAX_BUFFER_SIZE];
+    // TODO: use BufReader to read from stream & avoid dyanmic sizing optimization issues
+    // Also, make sure we are building buffer up in case we don't get all the data in one read
     for _ in 0..MAX_STREAM_READS {
         let bytes_read = stream.read(&mut buf)?;
 
@@ -21,6 +23,7 @@ fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
         
         // reduce overhead of looking for more client data
         thread::sleep(time::Duration::from_secs(1));
+        buf = [0; MAX_BUFFER_SIZE];
     }
     Ok(())
 }
