@@ -23,13 +23,13 @@ fn main() -> io::Result<()> {
         let json_bundle = serde_json::to_string(&bundle).unwrap();
 
         // Source https://www.wikiwand.com/en/Line_Delimited_JSON
-        send_newline_delimited_json(&mut stream, json_bundle);
+        send_newline_delimited_json(&mut stream, json_bundle)?;
 
         let mut reader = BufReader::new(&stream);
         let mut buffer: Vec<u8> = Vec::new();
         let bytes_returned = reader.read_until( b'\n', &mut buffer)?;
 
-        if bytes_returned > 0 { println!("read from server: {} \n", str::from_utf8(&buffer).unwrap()); }
+        if bytes_returned > 0 { println!("read from server: {}", str::from_utf8(&buffer).unwrap()); }
         thread::sleep(time::Duration::from_secs(POLLING_PERIOD_S));
     }
 

@@ -4,27 +4,43 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::thread;
 
-const MAX_STREAM_READS: usize = 60;
+const MAX_MESSAGE_LEN: usize = 65536;
 const MAX_BUFFER_SIZE: usize = 1024;
 
+const POLLING_PERIOD_S: u64 = 1;
+
 fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
+    let mut received_data: Vec<u8> = Vec::new();
     let mut buf = [0; MAX_BUFFER_SIZE];
-    // TODO: use BufReader to read from stream & avoid dyanmic sizing optimization issues
-    // Also, make sure we are building buffer up in case we don't get all the data in one read
-    for _ in 0..MAX_STREAM_READS {
+    // TODO: use BufReader to read from stream & avoid dyanmic sizing optimization issues?
+    loop {
         let bytes_read = stream.read(&mut buf)?;
 
         if bytes_read == 0 {
             return Ok(());
+        } else if bytes_read > MAX_MESSAGE_LEN {
+            return Err(io::Error::new(io::ErrorKind::Other, "Message too long"));
         }
-        stream.write(&buf[..bytes_read])?;
 
-        println!("from the sender: {}", String::from_utf8_lossy(&buf));
+        received_data.extend_from_slice(&buf[..bytes_read]);
+        if !buf.contains(&b'\n') {
+            // we haven't received the full message yet
+            println!("haven't received full message yet");
+            continue;
+        } else {
+            println!("received full message");
+        }
+
+        stream.write(&received_data)?;
+        println!("from the sender: {}", String::from_utf8_lossy(&received_data));
         
         // reduce overhead of looking for more client data
-        thread::sleep(time::Duration::from_secs(1));
-        buf = [0; MAX_BUFFER_SIZE];
+        thread::sleep(time::Duration::from_secs(POLLING_PERIOD_S));
+        received_data.clear();
     }
+
+    // TODO: clearly define when we are done with a sender?
+    println!("exiting handle_sender");
     Ok(())
 }
 
