@@ -33,6 +33,8 @@ fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
 
         stream.write(&received_data)?;
         println!("from the sender: {}", String::from_utf8_lossy(&received_data));
+        // TODO: rebuild util_bundle from received_data
+        // TODO: draw TUI here
         
         // reduce overhead of looking for more client data
         thread::sleep(time::Duration::from_secs(POLLING_PERIOD_S));
