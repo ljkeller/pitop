@@ -3,29 +3,36 @@ use std::time::Duration;
 use crossterm::event::{read, Event, KeyCode, self};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::{execute, queue, style::Print, ExecutableCommand, Result};
-use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
+use tui::backend::{CrosstermBackend, Backend};
+use tui::layout::{Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Style, Modifier};
 use tui::text::Span;
 use tui::widgets::{Block, Borders, Chart, Dataset, Gauge, Axis};
 use tui::symbols::Marker;
-use tui::Terminal;
+use tui::{Terminal, Frame};
 
 fn main() -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
     execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
 
-    // Create a TUI terminal
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Create your data for the graphs (replace with your own data)
+    run_app(&mut terminal)?;
+
+    execute!(
+        terminal.backend_mut(),
+        crossterm::terminal::LeaveAlternateScreen
+    )?;
+    disable_raw_mode()?;
+    Ok(())
+}
+
+fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<()> {
     let chart_data = [(0.0, 0.0), (1.0, 1.0), (2.0, 0.5), (3.0, 0.7), (4.0, 0.2)];
     let mut gauge_value = 80;
-
-    // Main event loop
-    loop {
+    Ok(loop {
         gauge_value += 1;
         if gauge_value > 100 {
             gauge_value = 0;
@@ -35,46 +42,18 @@ fn main() -> Result<()> {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(5)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)].as_ref())
                 .split(f.size());
 
-            // Render the charts
             let datasets = [Dataset::default()
                 .name("Chart 1")
                 .marker(Marker::Dot)
                 .style(Style::default().fg(Color::Cyan))
                 .data(&chart_data)];
-            let chart = Chart::new(datasets.to_vec())
-                .block(Block::default().title("Chart 1").borders(Borders::ALL))
-                .x_axis(
-                    Axis::default()
-                        .title("X Axis")
-                        .style(Style::default().fg(Color::Gray))
-                        .bounds([0.0, 5.0])
-                        .labels(vec![
-                            Span::styled("0.0", Style::default().add_modifier(Modifier::BOLD)),
-                            Span::raw("2.5"),
-                            Span::styled("5.0", Style::default().add_modifier(Modifier::ITALIC)),
-                        ])
-                ).y_axis(
-                    Axis::default()
-                        .title("Y Axis")
-                        .style(Style::default().fg(Color::Gray))
-                        .bounds([0.0, 1.0])
-                        .labels(vec![
-                            Span::styled("0.0", Style::default().add_modifier(Modifier::BOLD)),
-                            Span::raw("0.5"),
-                            Span::styled("1.0", Style::default().add_modifier(Modifier::ITALIC)),
-                        ])
-                );
-            f.render_widget(chart, chunks[0]);
 
-            // Render the gauges
-            let gauge = Gauge::default()
-                .block(Block::default().title("Memory Util").borders(Borders::ALL))
-                .gauge_style(Style::default().fg(Color::Magenta))
-                .percent(gauge_value as u16);
-            f.render_widget(gauge, chunks[1]);
+            draw_cpu_util(datasets, f, chunks[0]);
+            draw_network_util(gauge_value, f, chunks[1]);
+            draw_gpu_and_mem_util(gauge_value, gauge_value, f, &chunks);
         })?;
 
         let tick_rate = Duration::from_millis(250);
@@ -88,12 +67,57 @@ fn main() -> Result<()> {
         }
 
         terminal.clear()?;
-    }
+    })
+}
 
-    execute!(
-        terminal.backend_mut(),
-        crossterm::terminal::LeaveAlternateScreen
-    )?;
-    disable_raw_mode()?;
-    Ok(())
+fn draw_gpu_and_mem_util<B: Backend>(gpu_util: i32, mem_util: i32, f: &mut Frame<B>, chunks: &Vec<Rect>) {
+    // split given chunk into 2
+    // update below functions to draw into the new chunks
+    draw_gpu_util(gpu_util, f, chunks[2]);
+    draw_mem_util(mem_util, f, chunks[2]);
+}
+
+fn draw_mem_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, chunks: Rect) {
+    // TODO: implement
+}
+
+fn draw_gpu_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, chunks: Rect) {
+    // TODO: implement
+}
+
+// TODO: implement
+fn draw_network_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
+    let gauge = Gauge::default()
+        .block(Block::default().title("Network").borders(Borders::ALL))
+        .gauge_style(Style::default().fg(Color::Magenta))
+        .percent(gauge_value as u16);
+    f.render_widget(gauge, area);
+}
+
+// TODO: implement
+fn draw_cpu_util<B: Backend>(datasets: [Dataset<'_>; 1], f: &mut Frame<B>, area: Rect) {
+    let chart = Chart::new(datasets.to_vec())
+        .block(Block::default().title("CPU").borders(Borders::ALL))
+        .x_axis(
+            Axis::default()
+                .title("X Axis")
+                .style(Style::default().fg(Color::Gray))
+                .bounds([0.0, 5.0])
+                .labels(vec![
+                    Span::styled("0.0", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw("2.5"),
+                    Span::styled("5.0", Style::default().add_modifier(Modifier::ITALIC)),
+                ])
+        ).y_axis(
+            Axis::default()
+                .title("Y Axis")
+                .style(Style::default().fg(Color::Gray))
+                .bounds([0.0, 1.0])
+                .labels(vec![
+                    Span::styled("0.0", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw("0.5"),
+                    Span::styled("1.0", Style::default().add_modifier(Modifier::ITALIC)),
+                ])
+        );
+    f.render_widget(chart, area);
 }
