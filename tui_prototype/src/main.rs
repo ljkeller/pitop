@@ -53,7 +53,8 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
 
             draw_cpu_util(datasets, f, chunks[0]);
             draw_network_util(gauge_value, f, chunks[1]);
-            draw_gpu_and_mem_util(gauge_value, gauge_value, f, &chunks);
+            // TODO: remove numeric touchups
+            draw_gpu_and_mem_util(100-gauge_value, gauge_value/2, f, chunks[2]);
         })?;
 
         let tick_rate = Duration::from_millis(250);
@@ -70,19 +71,29 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
     })
 }
 
-fn draw_gpu_and_mem_util<B: Backend>(gpu_util: i32, mem_util: i32, f: &mut Frame<B>, chunks: &Vec<Rect>) {
-    // split given chunk into 2
-    // update below functions to draw into the new chunks
-    draw_gpu_util(gpu_util, f, chunks[2]);
-    draw_mem_util(mem_util, f, chunks[2]);
+fn draw_gpu_and_mem_util<B: Backend>(gpu_util: i32, mem_util: i32, f: &mut Frame<B>, area: Rect) {
+    let sublayout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(area);
+    draw_gpu_util(gpu_util, f, sublayout[0]);
+    draw_mem_util(mem_util, f, sublayout[1]);
 }
 
-fn draw_mem_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, chunks: Rect) {
-    // TODO: implement
+fn draw_mem_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
+    let gauge = Gauge::default()
+        .block(Block::default().title("Memory").borders(Borders::ALL))
+        .gauge_style(Style::default().fg(Color::Yellow))
+        .percent(gauge_value as u16);
+    f.render_widget(gauge, area);
 }
 
-fn draw_gpu_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, chunks: Rect) {
-    // TODO: implement
+fn draw_gpu_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
+    let gauge = Gauge::default()
+        .block(Block::default().title("GPU").borders(Borders::ALL))
+        .gauge_style(Style::default().fg(Color::Green))
+        .percent(gauge_value as u16);
+    f.render_widget(gauge, area);
 }
 
 // TODO: implement
