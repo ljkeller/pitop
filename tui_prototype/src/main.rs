@@ -11,6 +11,44 @@ use tui::widgets::{Block, Borders, Chart, Dataset, Gauge, Axis};
 use tui::symbols::Marker;
 use tui::{Terminal, Frame};
 
+//TODO: Implement sig gen for protype
+pub struct Signal {
+    x: f64,
+    interval: f64,
+    period: f64,
+    scale: f64,
+}
+
+impl Signal {
+    pub fn new(interval: f64, period: f64, scale: f64) -> Signal {
+        Signal {
+            x: 0.0,
+            interval,
+            period,
+            scale,
+        }
+    }
+}
+
+impl Iterator for Signal {
+    type Item = (f64, f64);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let point_mapping = (self.x, (self.x * 1.0 / self.period).sin() * self.scale);
+        self.x += self.interval;
+        Some(point_mapping)
+    }
+}
+
+struct App {
+    sig_gen: Signal,
+    cpu_util: Vec<Vec<(f64, f64)>>,
+    network_tx: Vec<(f64, f64)>,
+    network_rx: Vec<(f64, f64)>,
+    gpu_util: Vec<(f64, f64)>,
+    mem_util: Vec<(f64, f64)>,
+}
+
 fn main() -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
