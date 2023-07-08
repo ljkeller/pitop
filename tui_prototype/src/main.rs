@@ -8,8 +8,10 @@ use tui::layout::{Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Style, Modifier};
 use tui::text::Span;
 use tui::widgets::{Block, Borders, Chart, Dataset, Gauge, Axis};
-use tui::symbols::Marker;
+use tui::symbols::{Marker, self};
 use tui::{Terminal, Frame};
+
+const N_CPU_CORES: usize = 8;
 
 //TODO: Implement sig gen for protype
 pub struct Signal {
@@ -40,6 +42,7 @@ impl Iterator for Signal {
     }
 }
 
+// TODO: add monotonically increasing time window? Might just be more noise
 struct App {
     sig_gen: Signal,
     cpu_util: Vec<Vec<(f64, f64)>>,
@@ -47,6 +50,45 @@ struct App {
     network_rx: Vec<(f64, f64)>,
     gpu_util: Vec<(f64, f64)>,
     mem_util: Vec<(f64, f64)>,
+}
+
+impl App {
+    fn new () -> App {
+        let mut sig = Signal::new(0.2, 3.0, 50.0);
+        let data = sig.by_ref().take(200).collect::<Vec<(f64, f64)>>();
+
+        // data1.clone().into_iter().map(|(x, y)| (x, y + rand::random::<f64>() * sig.scale)).collect::<Vec<(f64, f64)>>();
+        App {
+            sig_gen: sig,
+            cpu_util: vec![data.clone(); N_CPU_CORES],
+            network_tx: data.clone(),
+            network_rx: data.clone(),
+            gpu_util: data.clone(),
+            mem_util: data.clone(),
+        }
+    }
+
+    fn on_tick(&mut self) {
+        for _ in 0..5 {
+            for cpu in self.cpu_util.iter_mut() {
+                cpu.remove(0);
+            }
+
+            self.network_tx.remove(0);
+            self.network_rx.remove(0);
+            self.gpu_util.remove(0);
+            self.mem_util.remove(0);
+        }
+        let new_data = self.sig_gen.by_ref().take(5).collect::<Vec<(f64, f64)>>().clone();
+
+        for cpu in self.cpu_util.iter_mut() {
+            cpu.extend(new_data.clone());
+        }
+        self.network_tx.extend(new_data.clone());
+        self.network_rx.extend(new_data.clone());
+        self.gpu_util.extend(new_data.clone());
+        self.mem_util.extend(new_data.clone());
+    }
 }
 
 fn main() -> Result<()> {
@@ -57,7 +99,8 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    run_app(&mut terminal)?;
+    let mut app = App::new();
+    run_app(&mut terminal, &mut app)?;
 
     execute!(
         terminal.backend_mut(),
@@ -67,7 +110,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<()> {
+fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, app: &mut App) -> Result<()> {
     let chart_data = [(0.0, 0.0), (1.0, 1.0), (2.0, 0.5), (3.0, 0.7), (4.0, 0.2)];
     let mut gauge_value = 80;
     Ok(loop {
@@ -77,22 +120,7 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
             println!("Resetting gauge value");
         }
         terminal.draw(|f| {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(5)
-                .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)].as_ref())
-                .split(f.size());
-
-            let datasets = [Dataset::default()
-                .name("Chart 1")
-                .marker(Marker::Dot)
-                .style(Style::default().fg(Color::Cyan))
-                .data(&chart_data)];
-
-            draw_cpu_util(datasets, f, chunks[0]);
-            draw_network_util(gauge_value, f, chunks[1]);
-            // TODO: remove numeric touchups
-            draw_gpu_and_mem_util(100-gauge_value, gauge_value/2, f, chunks[2]);
+            ui(f, chart_data, app, gauge_value);
         })?;
 
         let tick_rate = Duration::from_millis(250);
@@ -104,9 +132,42 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result
                 }
             }
         }
+        app.on_tick();
 
         terminal.clear()?;
     })
+}
+
+fn ui(f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>, chart_data: [(f64, f64); 5], app: &mut App, gauge_value: i32) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(5)
+        .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)].as_ref())
+        .split(f.size());
+
+    let datasets = [Dataset::default()
+        .name("Chart 1")
+        .marker(Marker::Dot)
+        .style(Style::default().fg(Color::Cyan))
+        .data(&chart_data)];
+    
+    let network_datasets = vec![
+        Dataset::default()
+            .name("Tx") 
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Cyan))
+            .data(&app.network_tx),
+        Dataset::default()
+            .name("Rx")
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Red))
+            .data(&app.network_rx)
+    ];
+
+    draw_cpu_util(datasets, f, chunks[0]);
+    draw_network_util(network_datasets, f, chunks[1]);
+    // TODO: remove numeric touchups
+    draw_gpu_and_mem_util(100-gauge_value, gauge_value/2, f, chunks[2]);
 }
 
 fn draw_gpu_and_mem_util<B: Backend>(gpu_util: i32, mem_util: i32, f: &mut Frame<B>, area: Rect) {
@@ -134,13 +195,34 @@ fn draw_gpu_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
     f.render_widget(gauge, area);
 }
 
-// TODO: implement
-fn draw_network_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
-    let gauge = Gauge::default()
-        .block(Block::default().title("Network").borders(Borders::ALL))
-        .gauge_style(Style::default().fg(Color::Magenta))
-        .percent(gauge_value as u16);
-    f.render_widget(gauge, area);
+fn draw_network_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rect) {
+    let chart = Chart::new(datasets)
+        .block(Block::default()
+            .title(Span::styled(
+                "Network",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ))
+            .borders(Borders::ALL),
+        )
+        .x_axis(
+            Axis::default()
+                .title("Time")
+                .style(Style::default().fg(Color::Gray)) //TODO: add labels, dynamic bounds? or just hold static last X ticks
+                .bounds([0.0, 500.0])
+        )
+        .y_axis(
+            Axis::default()
+                .title("Util")
+                .style(Style::default().fg(Color::Gray))
+                .labels(vec![
+                    Span::raw("0%"),
+                    Span::styled("100%", Style::default().add_modifier(Modifier::BOLD)),
+                ])
+                .bounds([0.0, 100.0]),
+        );
+    f.render_widget(chart, area);
 }
 
 // TODO: implement
