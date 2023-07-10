@@ -1,16 +1,15 @@
-use std::string;
 use std::time::Duration;
 
-use crossterm::event::{read, Event, KeyCode, self};
+use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use crossterm::{execute, queue, style::Print, ExecutableCommand, Result};
-use tui::backend::{CrosstermBackend, Backend};
+use crossterm::{execute, Result};
+use tui::backend::{Backend, CrosstermBackend};
 use tui::layout::{Constraint, Direction, Layout, Rect};
-use tui::style::{Color, Style, Modifier};
+use tui::style::{Color, Modifier, Style};
+use tui::symbols::{self};
 use tui::text::Span;
-use tui::widgets::{Block, Borders, Chart, Dataset, Gauge, Axis};
-use tui::symbols::{Marker, self};
-use tui::{Terminal, Frame};
+use tui::widgets::{Axis, Block, Borders, Chart, Dataset, Gauge};
+use tui::{Frame, Terminal};
 
 const N_CPU_CORES: usize = 8;
 
@@ -54,7 +53,7 @@ struct App {
 }
 
 impl App {
-    fn new () -> App {
+    fn new() -> App {
         let mut sig = Signal::new(0.2, 3.0, 50.0);
         let data = sig.by_ref().take(200).collect::<Vec<(f64, f64)>>();
 
@@ -80,7 +79,12 @@ impl App {
             self.gpu_util.remove(0);
             self.mem_util.remove(0);
         }
-        let new_data = self.sig_gen.by_ref().take(5).collect::<Vec<(f64, f64)>>().clone();
+        let new_data = self
+            .sig_gen
+            .by_ref()
+            .take(5)
+            .collect::<Vec<(f64, f64)>>()
+            .clone();
 
         for cpu in self.cpu_util.iter_mut() {
             cpu.extend(new_data.clone());
@@ -111,7 +115,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, app: &mut App) -> Result<()> {
+fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+    app: &mut App,
+) -> Result<()> {
     let chart_data = [(0.0, 0.0), (1.0, 1.0), (2.0, 0.5), (3.0, 0.7), (4.0, 0.2)];
     let mut gauge_value = 80;
     Ok(loop {
@@ -139,11 +146,23 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, app: &mut
     })
 }
 
-fn ui(f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>, chart_data: [(f64, f64); 5], app: &mut App, gauge_value: i32) {
+fn ui(
+    f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>,
+    chart_data: [(f64, f64); 5],
+    app: &mut App,
+    gauge_value: i32,
+) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(5)
-        .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)].as_ref())
+        .constraints(
+            [
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+            ]
+            .as_ref(),
+        )
         .split(f.size());
 
     let mut cpu_datasets: Vec<Dataset> = Vec::new();
@@ -153,13 +172,13 @@ fn ui(f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>, chart_data: [(f64, f
                 .name(format!("{}{}", "cpu", cpu_core.to_string()))
                 .marker(symbols::Marker::Braille)
                 .style(Style::default().fg(Color::Red)) // TODO: Randomly generate colors
-                .data(cpu_data)
+                .data(cpu_data),
         );
     }
-    
+
     let network_datasets = vec![
         Dataset::default()
-            .name("Tx") 
+            .name("Tx")
             .marker(symbols::Marker::Braille)
             .style(Style::default().fg(Color::Cyan))
             .data(&app.network_tx),
@@ -167,16 +186,13 @@ fn ui(f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>, chart_data: [(f64, f
             .name("Rx")
             .marker(symbols::Marker::Braille)
             .style(Style::default().fg(Color::Red))
-            .data(&app.network_rx)
+            .data(&app.network_rx),
     ];
 
     draw_cpu_util(cpu_datasets, f, chunks[0]);
     draw_network_util(network_datasets, f, chunks[1]);
     // TODO: pass (bounded) value here from app
-    draw_gpu_and_mem_util(0.150, 
-        0.8,
-        f,
-        chunks[2]);
+    draw_gpu_and_mem_util(0.150, 0.8, f, chunks[2]);
 }
 
 fn draw_gpu_and_mem_util<B: Backend>(gpu_util: f64, mem_util: f64, f: &mut Frame<B>, area: Rect) {
@@ -206,20 +222,21 @@ fn draw_gpu_util<B: Backend>(gauge_ratio: f64, f: &mut Frame<B>, area: Rect) {
 
 fn draw_network_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rect) {
     let chart = Chart::new(datasets)
-        .block(Block::default()
-            .title(Span::styled(
-                "Network",
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            ))
-            .borders(Borders::ALL),
+        .block(
+            Block::default()
+                .title(Span::styled(
+                    "Network",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ))
+                .borders(Borders::ALL),
         )
         .x_axis(
             Axis::default()
                 .title("Time")
                 .style(Style::default().fg(Color::Gray)) //TODO: add labels, dynamic bounds? or just hold static last X ticks
-                .bounds([0.0, 500.0])
+                .bounds([0.0, 500.0]),
         )
         .y_axis(
             Axis::default()
@@ -241,8 +258,9 @@ fn draw_cpu_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rec
             Axis::default()
                 .title("Time")
                 .style(Style::default().fg(Color::Gray))
-                .bounds([0.0, 500.0]) // TODO: Update x axis bounds
-        ).y_axis(
+                .bounds([0.0, 500.0]), // TODO: Update x axis bounds
+        )
+        .y_axis(
             Axis::default()
                 .title("Util")
                 .style(Style::default().fg(Color::Gray))
@@ -250,7 +268,7 @@ fn draw_cpu_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rec
                     Span::raw("0%"),
                     Span::styled("100%", Style::default().add_modifier(Modifier::BOLD)),
                 ])
-                .bounds([0.0, 100.0])
+                .bounds([0.0, 100.0]),
         );
     f.render_widget(chart, area);
 }
