@@ -1,3 +1,4 @@
+use std::string;
 use std::time::Duration;
 
 use crossterm::event::{read, Event, KeyCode, self};
@@ -145,11 +146,16 @@ fn ui(f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>, chart_data: [(f64, f
         .constraints([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)].as_ref())
         .split(f.size());
 
-    let datasets = [Dataset::default()
-        .name("Chart 1")
-        .marker(Marker::Dot)
-        .style(Style::default().fg(Color::Cyan))
-        .data(&chart_data)];
+    let mut cpu_datasets: Vec<Dataset> = Vec::new();
+    for (cpu_core, cpu_data) in app.cpu_util.iter().enumerate() {
+        cpu_datasets.push(
+            Dataset::default()
+                .name(format!("{}{}", "cpu", cpu_core.to_string()))
+                .marker(symbols::Marker::Braille)
+                .style(Style::default().fg(Color::Red)) // TODO: Randomly generate colors
+                .data(cpu_data)
+        );
+    }
     
     let network_datasets = vec![
         Dataset::default()
@@ -164,13 +170,16 @@ fn ui(f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>, chart_data: [(f64, f
             .data(&app.network_rx)
     ];
 
-    draw_cpu_util(datasets, f, chunks[0]);
+    draw_cpu_util(cpu_datasets, f, chunks[0]);
     draw_network_util(network_datasets, f, chunks[1]);
-    // TODO: remove numeric touchups
-    draw_gpu_and_mem_util(100-gauge_value, gauge_value/2, f, chunks[2]);
+    // TODO: pass (bounded) value here from app
+    draw_gpu_and_mem_util(0.150, 
+        0.8,
+        f,
+        chunks[2]);
 }
 
-fn draw_gpu_and_mem_util<B: Backend>(gpu_util: i32, mem_util: i32, f: &mut Frame<B>, area: Rect) {
+fn draw_gpu_and_mem_util<B: Backend>(gpu_util: f64, mem_util: f64, f: &mut Frame<B>, area: Rect) {
     let sublayout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
@@ -179,19 +188,19 @@ fn draw_gpu_and_mem_util<B: Backend>(gpu_util: i32, mem_util: i32, f: &mut Frame
     draw_mem_util(mem_util, f, sublayout[1]);
 }
 
-fn draw_mem_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
+fn draw_mem_util<B: Backend>(gauge_ratio: f64, f: &mut Frame<B>, area: Rect) {
     let gauge = Gauge::default()
         .block(Block::default().title("Memory").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Yellow))
-        .percent(gauge_value as u16);
+        .ratio(gauge_ratio);
     f.render_widget(gauge, area);
 }
 
-fn draw_gpu_util<B: Backend>(gauge_value: i32, f: &mut Frame<B>, area: Rect) {
+fn draw_gpu_util<B: Backend>(gauge_ratio: f64, f: &mut Frame<B>, area: Rect) {
     let gauge = Gauge::default()
         .block(Block::default().title("GPU").borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Green))
-        .percent(gauge_value as u16);
+        .ratio(gauge_ratio);
     f.render_widget(gauge, area);
 }
 
@@ -225,30 +234,23 @@ fn draw_network_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area:
     f.render_widget(chart, area);
 }
 
-// TODO: implement
-fn draw_cpu_util<B: Backend>(datasets: [Dataset<'_>; 1], f: &mut Frame<B>, area: Rect) {
+fn draw_cpu_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rect) {
     let chart = Chart::new(datasets.to_vec())
         .block(Block::default().title("CPU").borders(Borders::ALL))
         .x_axis(
             Axis::default()
-                .title("X Axis")
+                .title("Time")
                 .style(Style::default().fg(Color::Gray))
-                .bounds([0.0, 5.0])
-                .labels(vec![
-                    Span::styled("0.0", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw("2.5"),
-                    Span::styled("5.0", Style::default().add_modifier(Modifier::ITALIC)),
-                ])
+                .bounds([0.0, 500.0]) // TODO: Update x axis bounds
         ).y_axis(
             Axis::default()
-                .title("Y Axis")
+                .title("Util")
                 .style(Style::default().fg(Color::Gray))
-                .bounds([0.0, 1.0])
                 .labels(vec![
-                    Span::styled("0.0", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw("0.5"),
-                    Span::styled("1.0", Style::default().add_modifier(Modifier::ITALIC)),
+                    Span::raw("0%"),
+                    Span::styled("100%", Style::default().add_modifier(Modifier::BOLD)),
                 ])
+                .bounds([0.0, 100.0])
         );
     f.render_widget(chart, area);
 }
