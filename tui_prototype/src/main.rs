@@ -3,6 +3,7 @@ use std::time::Duration;
 use crossterm::event::{self, Event, KeyCode};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::{execute, Result};
+use rand::seq::SliceRandom;
 use tui::backend::{Backend, CrosstermBackend};
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
@@ -96,6 +97,29 @@ impl App {
     }
 }
 
+fn rand_color() -> Color {
+    let color_wheel = [
+        Color::Black,
+        Color::Red,
+        Color::Green,
+        Color::Yellow,
+        Color::Blue,
+        Color::Magenta,
+        Color::Cyan,
+        Color::Gray,
+        Color::DarkGray,
+        Color::LightRed,
+        Color::LightGreen,
+        Color::LightYellow,
+        Color::LightBlue,
+        Color::LightMagenta,
+        Color::LightCyan,
+        Color::White,
+    ];
+
+    color_wheel.choose(&mut rand::thread_rng()).unwrap().clone()
+}
+
 fn main() -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
@@ -171,7 +195,7 @@ fn ui(
             Dataset::default()
                 .name(format!("{}{}", "cpu", cpu_core.to_string()))
                 .marker(symbols::Marker::Braille)
-                .style(Style::default().fg(Color::Red)) // TODO: Randomly generate colors
+                .style(Style::default().fg(rand_color())) 
                 .data(cpu_data),
         );
     }
