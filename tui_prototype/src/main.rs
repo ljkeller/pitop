@@ -143,16 +143,9 @@ fn run_app(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
 ) -> Result<()> {
-    let chart_data = [(0.0, 0.0), (1.0, 1.0), (2.0, 0.5), (3.0, 0.7), (4.0, 0.2)];
-    let mut gauge_value = 80;
     Ok(loop {
-        gauge_value += 1;
-        if gauge_value > 100 {
-            gauge_value = 0;
-            println!("Resetting gauge value");
-        }
         terminal.draw(|f| {
-            ui(f, chart_data, app, gauge_value);
+            ui(f, app);
         })?;
 
         let tick_rate = Duration::from_millis(250);
@@ -172,9 +165,7 @@ fn run_app(
 
 fn ui(
     f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>,
-    chart_data: [(f64, f64); 5],
     app: &mut App,
-    gauge_value: i32,
 ) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
