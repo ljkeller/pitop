@@ -37,6 +37,7 @@ impl UtilBundle {
         let mut bundle = UtilBundle::new();
 
         bundle.cpu_usage = sys.cpus().iter().map(|x| x.cpu_usage()).collect();
+        // !ERROR: This returns null if program ran without sufficient perms (admin)
         bundle.cpu_temp = sys.components().iter().map(|x| x.temperature()).sum::<f32>() / sys.components().len() as f32;
         bundle.gpu_temp = 0 as f32; // TODO: IMPLEMENT
         bundle.gpu_usage = 0 as f32; // TODO: IMPLEMENT

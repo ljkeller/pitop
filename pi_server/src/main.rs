@@ -4,6 +4,8 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use std::thread;
 
+use util_bundle::UtilBundle;
+
 const MAX_MESSAGE_LEN: usize = 65536;
 const MAX_BUFFER_SIZE: usize = 1024;
 
@@ -23,6 +25,7 @@ fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
         }
 
         received_data.extend_from_slice(&buf[..bytes_read]);
+        // TODO: optimize search here to only search once for '\n' (other case is when we call .position())
         if !buf.contains(&b'\n') {
             // we haven't received the full message yet
             println!("haven't received full message yet");
@@ -33,9 +36,10 @@ fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
 
         stream.write(&received_data)?;
         println!("from the sender: {}", String::from_utf8_lossy(&received_data));
-        // TODO: rebuild util_bundle from received_data
+        let util_datapoint: UtilBundle = serde_json::from_slice(&received_data[..received_data.iter().position(|&x| x == b'\n').unwrap_or(0)])?; 
+        println!("util_datapoint: {:?}", util_datapoint);
         // TODO: draw TUI here
-        
+
         // reduce overhead of looking for more client data
         thread::sleep(time::Duration::from_secs(POLLING_PERIOD_S));
         received_data.clear();
