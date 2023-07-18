@@ -1,3 +1,4 @@
+use std::char::MAX;
 use std::io;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -21,6 +22,8 @@ const MAX_MESSAGE_LEN: usize = 65536;
 const MAX_BUFFER_SIZE: usize = 1024;
 
 const POLLING_PERIOD_S: u64 = 1;
+
+const MAX_UTIL_WINDOW_N: usize = 60;
 
 fn handle_sender(mut stream: TcpStream) -> io::Result<()> {
     let mut received_data: Vec<u8> = Vec::new();
@@ -85,32 +88,41 @@ impl App {
         }
     }
 
-    pub fn on_tick(&mut self) {
+    // TODO: Optimize
+    pub fn on_tick(&mut self, util_datapoint: UtilBundle) {
         println!("on_tick");
-        // for _ in 0..5 {
-        //     for cpu in self.cpu_util.iter_mut() {
-        //         cpu.remove(0);
-        //     }
+        
+        if self.cpu_util.len() > MAX_UTIL_WINDOW_N {
+            self.cpu_util.remove(0);
+        }
+        if self.network_tx.len() > MAX_UTIL_WINDOW_N {
+            self.network_tx.remove(0);
+        }
+        if self.network_rx.len() > MAX_UTIL_WINDOW_N {
+            self.network_rx.remove(0);
+        }
+        if self.gpu_util.len() > MAX_UTIL_WINDOW_N {
+            self.gpu_util.remove(0);
+        }
+        if self.mem_util.len() > MAX_UTIL_WINDOW_N {
+            self.mem_util.remove(0);
+        }
+        
+        // could just pop, push, then add 1 to all x values
+        self.cpu_util.push(util_datapoint.cpu_usage.iter().map(|f| (0 as f64, *f as f64)).collect());
+        self.network_tx.push((0 as f64, util_datapoint.data_tx as f64));
+        self.network_rx.push((0 as f64, util_datapoint.data_rx as f64));
+        self.gpu_util.push((0 as f64, util_datapoint.gpu_usage as f64));
+        // TODO: never divide by 0 (wont be an issue once sharing info between threads)
+        // self.mem_util.push((0 as f64, util_datapoint.mem_used as f64 / util_datapoint.mem_total as f64));
+        self.mem_util.push((0 as f64, 0.1));
 
-        //     self.network_tx.remove(0);
-        //     self.network_rx.remove(0);
-        //     self.gpu_util.remove(0);
-        //     self.mem_util.remove(0);
-        // }
-        // let new_data = self
-        //     .sig_gen
-        //     .by_ref()
-        //     .take(5)
-        //     .collect::<Vec<(f64, f64)>>()
-        //     .clone();
-
-        // for cpu in self.cpu_util.iter_mut() {
-        //     cpu.extend(new_data.clone());
-        // }
-        // self.network_tx.extend(new_data.clone());
-        // self.network_rx.extend(new_data.clone());
-        // self.gpu_util.extend(new_data.clone());
-        // self.mem_util.extend(new_data.clone());
+        self.cpu_util.iter_mut().rev().enumerate().for_each(|(i, (v))| v.iter_mut().for_each(|(t, y)| *t = i as f64));
+        self.network_tx.iter_mut().rev().enumerate().for_each(|(i, (t, y))| *t = i as f64);
+        self.network_rx.iter_mut().rev().enumerate().for_each(|(i, (t, y))| *t = i as f64);
+        self.gpu_util.iter_mut().rev().enumerate().for_each(|(i, (t, y))| *t = i as f64);
+        self.mem_util.iter_mut().rev().enumerate().for_each(|(i, (t, y))| *t = i as f64);
+        
     }
 }
 
@@ -153,7 +165,7 @@ fn run_app(
                 }
             }
         }
-        app.on_tick();
+        app.on_tick(UtilBundle::new());
 
         terminal.clear()?;
     })

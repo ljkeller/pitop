@@ -5,20 +5,20 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UtilBundle {
-    cpu_usage: Vec<f32>,
-    cpu_temp: f32,
-    gpu_temp: f32,
-    gpu_usage: f32,
-    mem_used: u64,
-    mem_total: u64,
-    disk_used: u64,
-    disk_total: u64,
-    data_tx: u64,
-    data_rx: u64,
+    pub cpu_usage: Vec<f32>,
+    pub cpu_temp: f32,
+    pub gpu_temp: f32,
+    pub gpu_usage: f32,
+    pub mem_used: u64,
+    pub mem_total: u64,
+    pub disk_used: u64,
+    pub disk_total: u64,
+    pub data_tx: u64,
+    pub data_rx: u64,
 }
 
 impl UtilBundle {
-    fn new() -> UtilBundle {
+    pub fn new() -> UtilBundle {
         UtilBundle {
             cpu_usage: Vec::new(),
             cpu_temp: 0.0,
