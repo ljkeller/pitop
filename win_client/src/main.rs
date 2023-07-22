@@ -5,20 +5,19 @@ use std::time;
 use std::io::{self, prelude::*, BufReader, Write};
 
 use sysinfo::{System, SystemExt};
-use serde::{Serialize, Deserialize};
 
 use util_bundle::UtilBundle;
 
-const MAX_STREAM_WRITES: usize = 6;
-const POLLING_PERIOD_S: u64 = 1;
+const POLLING_PERIOD_mS: u64 = 250;
 
 fn main() -> io::Result<()> {
     println!("Win Client is running...");
 
     let mut sys = System::new_all();
     let mut stream = TcpStream::connect("127.0.0.1:7878")?;
-    for _ in 0..MAX_STREAM_WRITES {
-        let bundle = UtilBundle::from_refreshed_sys(&mut sys);
+    // TODO: Use cntrl-c crate for graceful exit?
+    loop {
+        let bundle: UtilBundle = UtilBundle::from_refreshed_sys(&mut sys);
         println!("{}", serde_json::to_string_pretty(&bundle).unwrap());
         let json_bundle = serde_json::to_string(&bundle).unwrap();
 
@@ -30,7 +29,7 @@ fn main() -> io::Result<()> {
         let bytes_returned = reader.read_until( b'\n', &mut buffer)?;
 
         if bytes_returned > 0 { println!("read from server: {}", str::from_utf8(&buffer).unwrap()); }
-        thread::sleep(time::Duration::from_secs(POLLING_PERIOD_S));
+        thread::sleep(time::Duration::from_millis(POLLING_PERIOD_mS));
     }
 
     Ok(())
