@@ -9,27 +9,6 @@ use crossterm::{execute, Result};
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
-pub fn tui(datastream_in: Receiver<UtilBundle>) -> Result<()> {
-    println!("tui");
-
-    enable_raw_mode()?;
-    let mut stdout = std::io::stdout();
-    execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
-
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    let mut app = App::new();
-    run_app(&mut terminal, &mut app, datastream_in)?;
-
-    execute!(
-        terminal.backend_mut(),
-        crossterm::terminal::LeaveAlternateScreen
-    )?;
-    disable_raw_mode()?;
-    Ok(())
-}
-
 fn run_app(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
@@ -60,4 +39,25 @@ fn run_app(
 
         terminal.clear()?;
     })
+}
+
+pub fn tui(datastream_in: Receiver<UtilBundle>) -> Result<()> {
+    println!("tui");
+
+    enable_raw_mode()?;
+    let mut stdout = std::io::stdout();
+    execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let mut app = App::new();
+    run_app(&mut terminal, &mut app, datastream_in)?;
+
+    execute!(
+        terminal.backend_mut(),
+        crossterm::terminal::LeaveAlternateScreen
+    )?;
+    disable_raw_mode()?;
+    Ok(())
 }

@@ -8,7 +8,13 @@ use sysinfo::{System, SystemExt};
 
 use util_bundle::UtilBundle;
 
-const POLLING_PERIOD_mS: u64 = 250;
+const POLLING_PERIOD_MILLIS: u64 = 250;
+
+fn send_newline_delimited_json(stream: &mut TcpStream, json_bundle: String) -> io::Result<()> {
+    stream.write_all(json_bundle.as_bytes()).expect("Failed to write");
+    stream.write_all(b"\n").expect("Failed to write");
+    stream.flush()
+}
 
 fn main() -> io::Result<()> {
     println!("Win Client is running...");
@@ -29,14 +35,7 @@ fn main() -> io::Result<()> {
         let bytes_returned = reader.read_until( b'\n', &mut buffer)?;
 
         if bytes_returned > 0 { println!("read from server: {}", str::from_utf8(&buffer).unwrap()); }
-        thread::sleep(time::Duration::from_millis(POLLING_PERIOD_mS));
+        thread::sleep(time::Duration::from_millis(POLLING_PERIOD_MILLIS));
     }
-
     Ok(())
-}
-
-fn send_newline_delimited_json(stream: &mut TcpStream, json_bundle: String) -> io::Result<()> {
-    stream.write_all(json_bundle.as_bytes()).expect("Failed to write");
-    stream.write_all(b"\n").expect("Failed to write");
-    stream.flush()
 }

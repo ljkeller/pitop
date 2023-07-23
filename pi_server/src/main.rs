@@ -60,19 +60,6 @@ fn handle_sender(mut in_stream: TcpStream, out_stream: Sender<UtilBundle>) -> io
     Ok(())
 }
 
-fn main() -> io::Result<()> {
-    println!("Pi Server is running...");
-    let tcp_listener = TcpListener::bind("127.0.0.1:7878").expect("Failed bind with sender");
-
-    let (utilbundle_producer, utilbundle_consumer) = channel();
-    let tui_handler = thread::spawn(move || tui(utilbundle_consumer));
-
-    process_incoming_threaded(tcp_listener, utilbundle_producer);
-    tui_handler.join().unwrap();
-
-    Ok(())
-}
-
 fn process_incoming_threaded(receiver_listener: TcpListener, utilbundle_producer: Sender<UtilBundle>) {
     let mut thread_vec: Vec<thread::JoinHandle<()>> = Vec::new();
     for stream in receiver_listener.incoming() {
@@ -90,4 +77,17 @@ fn process_incoming_threaded(receiver_listener: TcpListener, utilbundle_producer
     for handle in thread_vec {
         handle.join().unwrap();
     }
+}
+
+fn main() -> io::Result<()> {
+    println!("Pi Server is running...");
+    let tcp_listener = TcpListener::bind("127.0.0.1:7878").expect("Failed bind with sender");
+
+    let (utilbundle_producer, utilbundle_consumer) = channel();
+    let tui_handler = thread::spawn(move || tui(utilbundle_consumer));
+
+    process_incoming_threaded(tcp_listener, utilbundle_producer);
+    tui_handler.join().unwrap();
+
+    Ok(())
 }
