@@ -21,7 +21,7 @@ impl App {
         }
     }
 
-    // TODO: Optimize
+    // TODO: Optimize if necessary
     pub fn on_tick(&mut self, datapoint: UtilBundle) {
         println!("on_tick");
 
