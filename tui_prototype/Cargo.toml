@@ -1,14 +1,11 @@
 [package]
-name = "pi_server"
+name = "tui_prototype"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.99"
-util_bundle = { path = "../util_bundle" }
 tui = { version = "0.19.0" }
 crossterm = { version = "0.25" }
 rand = "0.8.5"
