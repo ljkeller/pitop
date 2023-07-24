@@ -23,7 +23,6 @@ impl App {
 
     // TODO: Optimize if necessary
     pub fn on_tick(&mut self, datapoint: UtilBundle) {
-        println!("on_tick");
 
         if self.cpu_util.len() > MAX_UTIL_WINDOW_N {
             self.cpu_util.remove(0);
@@ -41,14 +40,14 @@ impl App {
             self.mem_util.remove(0);
         }
 
-        // could just pop, push, then add 1 to all x values
-        self.cpu_util.push(
-            datapoint
-                .cpu_usage
-                .iter()
-                .map(|f| (0 as f64, *f as f64))
-                .collect(),
-        );
+        while self.cpu_util.len() < datapoint.cpu_usage.len() {
+            self.cpu_util.push(vec![]);
+        }
+
+        datapoint.cpu_usage.iter().enumerate().for_each(|(idx, f)| {
+            self.cpu_util[idx].push((0 as f64, *f as f64))
+        });
+
         self.network_tx.push((0 as f64, datapoint.data_tx as f64));
         self.network_rx.push((0 as f64, datapoint.data_rx as f64));
         self.gpu_util.push((0 as f64, datapoint.gpu_usage as f64));
@@ -61,12 +60,16 @@ impl App {
         } else {
             self.mem_util.push((0.0, 0.0));
         }
-
+        
+        // There are a couple obvious ways to organize cpu_util data:
+        // 1. [[core1], [core2], [core3], ...]
+        // 2. [[datapoint1], [datapoint2], [datapoint3], ...]
+        // Organizing as 1. allows us to easily plot each core as its own dataset (and follows how other 
+        // utils are stored)
         self.cpu_util
             .iter_mut()
-            .rev()
-            .enumerate()
-            .for_each(|(i, v)| v.iter_mut().for_each(|(t, y)| *t = i as f64));
+            .for_each(|v| v.iter_mut().rev().enumerate().for_each(|(idx, (x_t, _y_t))| *x_t = idx as f64));
+
         self.network_tx
             .iter_mut()
             .rev()

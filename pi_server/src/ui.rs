@@ -9,6 +9,28 @@ use tui::text::Span;
 use tui::widgets::{Axis, Block, Borders, Chart, Dataset, Gauge};
 use tui::{Frame};
 
+pub struct ColorGenerator {
+    idx_to_color: Vec<Color>
+}
+
+impl ColorGenerator {
+    pub fn new() -> ColorGenerator {
+        ColorGenerator { idx_to_color: Vec::new() }
+    }
+
+    // memoized so that each cpu core always has the same color as before
+    pub fn idx_to_color_persistant(&mut self, idx: usize) -> Color {
+        if idx < self.idx_to_color.len() {
+            self.idx_to_color[idx];
+        }
+
+        while idx >= self.idx_to_color.len() {
+            self.idx_to_color.push(rand_color());
+        }
+        self.idx_to_color[idx]
+    }
+}
+
 fn rand_color() -> Color {
     let color_wheel = [
         Color::Black,
@@ -35,15 +57,16 @@ fn rand_color() -> Color {
 pub fn draw_ui(
     f: &mut Frame<'_, CrosstermBackend<std::io::Stdout>>,
     app: &mut App,
+    color_gen: &mut ColorGenerator,
 ) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(5)
+        .margin(2)
         .constraints(
             [
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
+                Constraint::Percentage(50),
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
             ]
             .as_ref(),
         )
@@ -55,7 +78,7 @@ pub fn draw_ui(
             Dataset::default()
                 .name(format!("{}{}", "cpu", cpu_core.to_string()))
                 .marker(symbols::Marker::Braille)
-                .style(Style::default().fg(rand_color())) 
+                .style(Style::default().fg(color_gen.idx_to_color_persistant(cpu_core))) 
                 .data(cpu_data),
         );
     }
@@ -136,7 +159,7 @@ fn draw_network_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area:
 }
 
 fn draw_cpu_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rect) {
-    let chart = Chart::new(datasets.to_vec())
+    let chart = Chart::new(datasets)
         .block(Block::default().title("CPU").borders(Borders::ALL))
         .x_axis(
             Axis::default()

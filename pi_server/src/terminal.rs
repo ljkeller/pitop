@@ -1,4 +1,5 @@
-use crate::{UtilBundle, ui::draw_ui, app::App, POLLING_PERIOD_mS};
+use crate::ui::ColorGenerator;
+use crate::{UtilBundle, ui::draw_ui, app::App, POLLING_PERIOD_MILLIS};
 
 use std::sync::mpsc::{Receiver};
 use std::time;
@@ -14,14 +15,15 @@ fn run_app(
     app: &mut App,
     datastream_in: Receiver<UtilBundle>,
 ) -> Result<()> {
+    let mut color_gen: ColorGenerator = ColorGenerator::new();
     Ok(loop {
         terminal.draw(|f| {
-            draw_ui(f, app);
+            draw_ui(f, app, &mut color_gen);
         })?;
 
         // TODO: Update tick-rate logic to be more accurate
         // TODO: Create relationship between client and server data rates
-        let tick_rate = time::Duration::from_millis(POLLING_PERIOD_mS);
+        let tick_rate = time::Duration::from_millis(POLLING_PERIOD_MILLIS);
         let timeout = tick_rate;
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
@@ -33,7 +35,7 @@ fn run_app(
         if let Ok(datapoint) = datastream_in.recv_timeout(tick_rate) {
             app.on_tick(datapoint);
         } else {
-            println!("Generate 0 datapoint");
+            // println!("Generate 0 datapoint");
             app.on_tick(UtilBundle::new());
         }
 
@@ -42,7 +44,7 @@ fn run_app(
 }
 
 pub fn tui(datastream_in: Receiver<UtilBundle>) -> Result<()> {
-    println!("tui");
+    // println!("tui");
 
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();

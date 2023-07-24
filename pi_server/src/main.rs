@@ -14,7 +14,7 @@ use std::time;
 const MAX_MESSAGE_LEN: usize = 65536;
 const MAX_BUFFER_SIZE: usize = 1024;
 
-const POLLING_PERIOD_mS: u64 = 250;
+const POLLING_PERIOD_MILLIS: u64 = 250;
 
 fn handle_sender(mut in_stream: TcpStream, out_stream: Sender<UtilBundle>) -> io::Result<()> {
     let mut received_data: Vec<u8> = Vec::new();
@@ -33,25 +33,25 @@ fn handle_sender(mut in_stream: TcpStream, out_stream: Sender<UtilBundle>) -> io
         // TODO: optimize search here to only search once for '\n' (other case is when we call .position())
         if !buf.contains(&b'\n') {
             // we haven't received the full message yet
-            println!("haven't received full message yet");
+            // println!("haven't received full message yet");
             continue;
         } else {
-            println!("received full message");
+            // println!("received full message");
         }
 
         in_stream.write(&received_data)?;
-        println!(
-            "from the sender: {}",
-            String::from_utf8_lossy(&received_data)
-        );
+        // println!(
+        //     "from the sender: {}",
+        //     String::from_utf8_lossy(&received_data)
+        // );
         let util_datapoint: UtilBundle = serde_json::from_slice(
             &received_data[..received_data.iter().position(|&x| x == b'\n').unwrap_or(0)],
         )?;
-        println!("util_datapoint: {:?}", util_datapoint);
+        // println!("util_datapoint: {:?}", util_datapoint);
         out_stream.send(util_datapoint);
 
         // reduce overhead of looking for more client data
-        thread::sleep(time::Duration::from_millis(POLLING_PERIOD_mS));
+        thread::sleep(time::Duration::from_millis(POLLING_PERIOD_MILLIS));
         received_data.clear();
     }
 
@@ -80,7 +80,7 @@ fn process_incoming_threaded(receiver_listener: TcpListener, utilbundle_producer
 }
 
 fn main() -> io::Result<()> {
-    println!("Pi Server is running...");
+    // println!("Pi Server is running...");
     let tcp_listener = TcpListener::bind("127.0.0.1:7878").expect("Failed bind with sender");
 
     let (utilbundle_producer, utilbundle_consumer) = channel();
