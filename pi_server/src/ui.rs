@@ -83,6 +83,8 @@ pub fn draw_ui(
         );
     }
 
+    app.network_tx.iter_mut().for_each(|(_time, rate)| *rate = *rate / 1024.0);
+    app.network_rx.iter_mut().for_each(|(_time, rate)| *rate = *rate / 1024.0);
     let network_datasets = vec![
         Dataset::default()
             .name("Tx")
@@ -99,21 +101,27 @@ pub fn draw_ui(
     draw_cpu_util(cpu_datasets, f, chunks[0]);
     draw_network_util(network_datasets, f, chunks[1]);
     // TODO: pass (bounded) value here from app
-    draw_gpu_and_mem_util(app.gpu_util.last().unwrap_or(&(0.0, 0.0)).1, app.mem_util.last().unwrap_or(&(0.0, 0.0)).1, f, chunks[2]);
+
+    draw_gpu_and_mem_util(app.gpu_util.last().unwrap_or(&(0.0, 0.0)).1, 
+        app.mem_util.last().unwrap_or(&(0.0, 0.0)).1,
+        app.mem_total_bytes,
+        f,
+        chunks[2]);
 }
 
-fn draw_gpu_and_mem_util<B: Backend>(gpu_util: f64, mem_util: f64, f: &mut Frame<B>, area: Rect) {
+fn draw_gpu_and_mem_util<B: Backend>(gpu_util: f64, mem_util: f64, mem_total: u64, f: &mut Frame<B>, area: Rect) {
     let sublayout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(area);
     draw_gpu_util(gpu_util, f, sublayout[0]);
-    draw_mem_util(mem_util, f, sublayout[1]);
+    draw_mem_util(mem_util, mem_total, f, sublayout[1]);
 }
 
-fn draw_mem_util<B: Backend>(gauge_ratio: f64, f: &mut Frame<B>, area: Rect) {
+fn draw_mem_util<B: Backend>(gauge_ratio: f64, mem_total_bytes: u64, f: &mut Frame<B>, area: Rect) {
+    let mem_title = format!("Memory ({}GB)", mem_total_bytes/1024/1024/1024);
     let gauge = Gauge::default()
-        .block(Block::default().title("Memory").borders(Borders::ALL))
+        .block(Block::default().title(mem_title).borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Yellow))
         .ratio(gauge_ratio);
     f.render_widget(gauge, area);
@@ -127,6 +135,7 @@ fn draw_gpu_util<B: Backend>(gauge_ratio: f64, f: &mut Frame<B>, area: Rect) {
     f.render_widget(gauge, area);
 }
 
+// TODO: Should I dynamically size the y axis label & bounds?
 fn draw_network_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area: Rect) {
     let chart = Chart::new(datasets)
         .block(
@@ -147,13 +156,13 @@ fn draw_network_util<B: Backend>(datasets: Vec<Dataset>, f: &mut Frame<B>, area:
         )
         .y_axis(
             Axis::default()
-                .title("Util")
+                .title("kbps")
                 .style(Style::default().fg(Color::Gray))
                 .labels(vec![
-                    Span::raw("0%"),
-                    Span::styled("100%", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw("0"),
+                    Span::styled("50.0", Style::default().add_modifier(Modifier::BOLD)),
                 ])
-                .bounds([0.0, 100.0]),
+                .bounds([0.0, 50.0]),
         );
     f.render_widget(chart, area);
 }

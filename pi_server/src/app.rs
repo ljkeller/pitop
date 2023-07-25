@@ -8,6 +8,7 @@ pub struct App {
     pub network_rx: Vec<(f64, f64)>,
     pub gpu_util: Vec<(f64, f64)>,
     pub mem_util: Vec<(f64, f64)>,
+    pub mem_total_bytes: u64,
 }
 
 impl App {
@@ -18,6 +19,7 @@ impl App {
             network_rx: vec![],
             gpu_util: vec![],
             mem_util: vec![],
+            mem_total_bytes: 0,
         }
     }
 
@@ -60,7 +62,7 @@ impl App {
         } else {
             self.mem_util.push((0.0, 0.0));
         }
-        
+        self.mem_total_bytes = datapoint.mem_total;
         // There are a couple obvious ways to organize cpu_util data:
         // 1. [[core1], [core2], [core3], ...]
         // 2. [[datapoint1], [datapoint2], [datapoint3], ...]
