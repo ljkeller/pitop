@@ -83,8 +83,6 @@ pub fn draw_ui(
         );
     }
 
-    app.network_tx.iter_mut().for_each(|(_time, rate)| *rate = *rate / 1024.0);
-    app.network_rx.iter_mut().for_each(|(_time, rate)| *rate = *rate / 1024.0);
     let network_datasets = vec![
         Dataset::default()
             .name("Tx")

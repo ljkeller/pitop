@@ -50,8 +50,8 @@ impl App {
             self.cpu_util[idx].push((0 as f64, *f as f64))
         });
 
-        self.network_tx.push((0 as f64, datapoint.data_tx as f64));
-        self.network_rx.push((0 as f64, datapoint.data_rx as f64));
+        self.network_tx.push((0 as f64, (datapoint.data_tx as f64) / 1024.0));
+        self.network_rx.push((0 as f64, (datapoint.data_rx as f64) / 1024.0));
         self.gpu_util.push((0 as f64, datapoint.gpu_usage as f64));
         // TODO: never divide by 0 (wont be an issue once sharing info between threads)
         if datapoint.mem_total > 0 {
