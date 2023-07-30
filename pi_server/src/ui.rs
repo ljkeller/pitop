@@ -100,19 +100,30 @@ pub fn draw_ui(
     draw_network_util(network_datasets, f, chunks[1]);
     // TODO: pass (bounded) value here from app
 
-    draw_gpu_and_mem_util(app.gpu_util.last().unwrap_or(&(0.0, 0.0)).1, 
+    draw_gpu_and_mem_util(get_gpu_ratio(app.gpu_power_draw.last(), app.gpu_power_limit), 
+        app.gpu_power_limit,
         app.mem_util.last().unwrap_or(&(0.0, 0.0)).1,
         app.mem_total_bytes,
         f,
         chunks[2]);
 }
 
-fn draw_gpu_and_mem_util<B: Backend>(gpu_util: f64, mem_util: f64, mem_total: u64, f: &mut Frame<B>, area: Rect) {
+fn get_gpu_ratio(gpu_power_draw: Option<&(f64, f64)>, max_gpu_power: f64) -> f64 {
+    if max_gpu_power == 0.0 { return 0.0; }
+
+    if let Some((x, active_draw)) = gpu_power_draw {
+        active_draw/max_gpu_power
+    } else {
+        0.0
+    }
+}
+
+fn draw_gpu_and_mem_util<B: Backend>(gpu_power_draw: f64, gpu_power_limit: f64, mem_util: f64, mem_total: u64, f: &mut Frame<B>, area: Rect) {
     let sublayout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(area);
-    draw_gpu_util(gpu_util, f, sublayout[0]);
+    draw_gpu_power_draw(gpu_power_draw, gpu_power_limit, f, sublayout[0]);
     draw_mem_util(mem_util, mem_total, f, sublayout[1]);
 }
 
@@ -125,9 +136,10 @@ fn draw_mem_util<B: Backend>(gauge_ratio: f64, mem_total_bytes: u64, f: &mut Fra
     f.render_widget(gauge, area);
 }
 
-fn draw_gpu_util<B: Backend>(gauge_ratio: f64, f: &mut Frame<B>, area: Rect) {
+fn draw_gpu_power_draw<B: Backend>(gauge_ratio: f64, gpu_power_limit: f64, f: &mut Frame<B>, area: Rect) {
+    let title = format!("GPU (Limit {}W)", gpu_power_limit);
     let gauge = Gauge::default()
-        .block(Block::default().title("GPU").borders(Borders::ALL))
+        .block(Block::default().title(title).borders(Borders::ALL))
         .gauge_style(Style::default().fg(Color::Green))
         .ratio(gauge_ratio);
     f.render_widget(gauge, area);

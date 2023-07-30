@@ -6,7 +6,8 @@ pub struct App {
     pub cpu_util: Vec<Vec<(f64, f64)>>,
     pub network_tx: Vec<(f64, f64)>,
     pub network_rx: Vec<(f64, f64)>,
-    pub gpu_util: Vec<(f64, f64)>,
+    pub gpu_power_draw: Vec<(f64, f64)>,
+    pub gpu_power_limit: f64,
     pub mem_util: Vec<(f64, f64)>,
     pub mem_total_bytes: u64,
 }
@@ -17,7 +18,8 @@ impl App {
             cpu_util: vec![],
             network_tx: vec![],
             network_rx: vec![],
-            gpu_util: vec![],
+            gpu_power_draw: vec![],
+            gpu_power_limit: 0.0,
             mem_util: vec![],
             mem_total_bytes: 0,
         }
@@ -35,8 +37,8 @@ impl App {
         if self.network_rx.len() > MAX_UTIL_WINDOW_N {
             self.network_rx.remove(0);
         }
-        if self.gpu_util.len() > MAX_UTIL_WINDOW_N {
-            self.gpu_util.remove(0);
+        if self.gpu_power_draw.len() > MAX_UTIL_WINDOW_N {
+            self.gpu_power_draw.remove(0);
         }
         if self.mem_util.len() > MAX_UTIL_WINDOW_N {
             self.mem_util.remove(0);
@@ -52,7 +54,8 @@ impl App {
 
         self.network_tx.push((0 as f64, (datapoint.data_tx as f64) / 1024.0));
         self.network_rx.push((0 as f64, (datapoint.data_rx as f64) / 1024.0));
-        self.gpu_util.push((0 as f64, datapoint.gpu_usage as f64));
+        self.gpu_power_draw.push((0 as f64, datapoint.gpu_power as f64));
+        self.gpu_power_limit = datapoint.gpu_power_limit;
         // TODO: never divide by 0 (wont be an issue once sharing info between threads)
         if datapoint.mem_total > 0 {
             self.mem_util.push((
@@ -82,7 +85,7 @@ impl App {
             .rev()
             .enumerate()
             .for_each(|(i, (t, _y))| *t = i as f64);
-        self.gpu_util
+        self.gpu_power_draw
             .iter_mut()
             .rev()
             .enumerate()
