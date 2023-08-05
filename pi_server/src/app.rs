@@ -60,7 +60,7 @@ impl App {
         if datapoint.mem_total > 0 {
             self.mem_util.push((
                 0 as f64,
-                datapoint.mem_used as f64 / datapoint.mem_total as f64,
+                (datapoint.mem_used as f64 / datapoint.mem_total as f64).min(1.0).max(0.0),
             ));
         } else {
             self.mem_util.push((0.0, 0.0));

@@ -112,7 +112,7 @@ fn get_gpu_ratio(gpu_power_draw: Option<&(f64, f64)>, max_gpu_power: f64) -> f64
     if max_gpu_power == 0.0 { return 0.0; }
 
     if let Some((x, active_draw)) = gpu_power_draw {
-        active_draw/max_gpu_power
+        (active_draw/max_gpu_power).min(1.0).max(0.0)
     } else {
         0.0
     }
