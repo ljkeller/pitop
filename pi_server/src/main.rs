@@ -4,6 +4,7 @@ mod terminal;
 use crate::app::App;
 use crate::terminal::tui;
 use util_bundle::UtilBundle;use std::io;
+use clap::Parser;
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -15,6 +16,19 @@ const MAX_MESSAGE_LEN: usize = 65536;
 const MAX_BUFFER_SIZE: usize = 1024;
 
 const POLLING_PERIOD_MILLIS: u64 = 250;
+
+#[derive(Parser)]
+#[command(name = "PiTop Pi Server")]
+#[command(author = "Lucas Keller")]
+#[command(version = "1.0")]
+#[command(about = "Processes and displays system utilization from PiTop client", long_about = None)]
+struct Args {
+    #[arg(short, long, default_value = "127.0.0.1")]
+    ip: String,
+    
+    #[arg(short, long, default_value = "7878")]
+    port: String
+}
 
 fn handle_sender(mut in_stream: TcpStream, out_stream: Sender<UtilBundle>) -> io::Result<()> {
     let mut received_data: Vec<u8> = Vec::new();
@@ -39,7 +53,8 @@ fn handle_sender(mut in_stream: TcpStream, out_stream: Sender<UtilBundle>) -> io
             // println!("received full message");
         }
 
-        in_stream.write(&received_data)?;
+        // TODO: Use debug levels & use a logging crate
+        // in_stream.write(&received_data)?;
         // println!(
         //     "from the sender: {}",
         //     String::from_utf8_lossy(&received_data)
@@ -80,8 +95,8 @@ fn process_incoming_threaded(receiver_listener: TcpListener, utilbundle_producer
 }
 
 fn main() -> io::Result<()> {
-    // println!("Pi Server is running...");
-    let tcp_listener = TcpListener::bind("127.0.0.1:7878").expect("Failed bind with sender");
+    let args = Args::parse();
+    let tcp_listener = TcpListener::bind(format!("{}:{}", args.ip, args.port)).expect("Failed bind with sender");
 
     let (utilbundle_producer, utilbundle_consumer) = channel();
     let tui_handler = thread::spawn(move || tui(utilbundle_consumer));
