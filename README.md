@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-PiTop is a simple, sleek Rust client-server application designed to monitor system utilization from Windows client and display the processed data on a Raspberry Pi server (I display the data on the 7" raspberry pi display) The app uses various rust libraries, such as [tui](https://docs.rs/tui/latest/tui/), [sysinfo](https://docs.rs/sysinfo/latest/sysinfo/), [clap](https://docs.rs/clap/latest/clap/). The app is built on TCP with a MPSC design on the pi server.
+PiTop is a 100% rust client-server TUI application designed to monitor Windows system utilization on a Raspberry Pi server (I display the data on the 7" raspberry pi display). The app uses various rust libraries, such as [tui](https://docs.rs/tui/latest/tui/), [sysinfo](https://docs.rs/sysinfo/latest/sysinfo/), [clap](https://docs.rs/clap/latest/clap/); the backend is built on TCP with [MPSC](https://doc.rust-lang.org/std/sync/mpsc/) processing.
 ![PiTopDemo](https://github.com/ljkeller/pitop/assets/44109284/f1ecf218-8e23-4af0-b500-77496f0eb8fa)
 
 ## Features
